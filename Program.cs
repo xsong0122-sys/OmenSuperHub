@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -103,6 +103,8 @@ namespace OmenSuperHub {
     static readonly string[] PresetOrder = { "PresetExtreme", "PresetGpuPriority", "PresetLightUse", "PresetCustom1", "PresetCustom2", "PresetCustom3" };
     static string currentPreset = "PresetCustom1", presetCustom1Name = Strings.PresetCustom1, presetCustom2Name = Strings.PresetCustom2, presetCustom3Name = Strings.PresetCustom3;
     static string fanTable = "cool", fanControl = "auto", tempSensitivity = "high", tppPower = "null", iccMax = "null", acLoadline = "null", cpuPower = "null", tgpPower = "on", ppabPower = "on", dState = "normal", autoStart = "off", customIcon = "original", floatingBar = "off", floatingBarLoc = "left", floatingBarScreen = "", omenKey = OmenKeyActions.Default, omenKeyAppPath = "", omenKeyAppName = "", omenKeyShortcut = "", omenKeyPresetCandidates = "", dataLocalize = "off", appLanguage = "zh-CN", autoFanProtect = "on";
+    static int floatingOpacity = 255;
+    static string floatingFontColor = "auto", floatingLayout = "horizontal";
     static volatile bool monitorFan = false;
     static bool skipCheckedUpdate = false; // action 内拦截时置 true，阻止 CreateMenuItem 覆盖勾选
     static bool showCPUTemp = true, showCPUPower = true, showCPUFrequency = false, showGPUTemp = true, showGPUPower = true, showGPUFrequency = false;
@@ -1329,7 +1331,7 @@ namespace OmenSuperHub {
     static void ShowFloatingForm() {
       lock (_floatingLock) {
         if (floatingForm == null || floatingForm.IsDisposed) {
-          floatingForm = new FloatingForm(monitorText(), textSize, floatingBarLoc, GetFloatingScreen());
+          floatingForm = new FloatingForm(monitorText(), textSize, floatingBarLoc, GetFloatingScreen(), floatingOpacity, floatingFontColor, floatingLayout);
           floatingForm.Show();
         } else {
           floatingForm.BringToFront();
@@ -1365,7 +1367,7 @@ namespace OmenSuperHub {
         //  return;
         // }
         floatingForm.TopMost = true;
-        floatingForm.SetText(monitorText(), textSize, floatingBarLoc, GetFloatingScreen());
+        floatingForm.SetText(monitorText(), textSize, floatingBarLoc, GetFloatingScreen(), floatingOpacity, floatingFontColor, floatingLayout);
       }
     }
 
@@ -1419,7 +1421,7 @@ namespace OmenSuperHub {
     static void RefreshMonitorDisplay() {
       UpdateTrayIconText();
       if (floatingForm != null) {
-        floatingForm.SetText(monitorText(), textSize, floatingBarLoc, GetFloatingScreen());
+        floatingForm.SetText(monitorText(), textSize, floatingBarLoc, GetFloatingScreen(), floatingOpacity, floatingFontColor, floatingLayout);
       }
     }
 

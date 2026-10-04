@@ -1,4 +1,4 @@
-﻿namespace OmenSuperHub {
+namespace OmenSuperHub {
   /// <summary>
   /// 语言枚举：简体中文 / 繁体中文 / 英文
   /// </summary>
@@ -477,6 +477,23 @@
     public static string FloatingLocRight => T("右上角", "右上角", "Top Right");
     public static string FloatingScreen => T("显示器选择", "顯示器選擇", "Display");
     public static string FloatingScreenPrimary => T("主屏幕", "主螢幕", "Primary");
+    public static string FloatingLayout => T("布局", "佈局", "Layout");
+    public static string FloatingLayoutHorizontal => T("横向", "橫向", "Horizontal");
+    public static string FloatingLayoutVertical => T("纵向", "縱向", "Vertical");
+    public static string FloatingFontColor => T("字体颜色", "字體顏色", "Font Color");
+    public static string FloatingFontColorAuto => T("自动", "自動", "Auto");
+    public static string FloatingFontColorWhite => T("白色", "白色", "White");
+    public static string FloatingFontColorRed => T("红色", "紅色", "Red");
+    public static string FloatingFontColorGreen => T("绿色", "綠色", "Green");
+    public static string FloatingFontColorBlue => T("蓝色", "藍色", "Blue");
+    public static string FloatingFontColorYellow => T("黄色", "黃色", "Yellow");
+    public static string FloatingFontColorOrange => T("橙色", "橙色", "Orange");
+    public static string FloatingFontColorPurple => T("紫色", "紫色", "Purple");
+    public static string FloatingFontColorCyan => T("青色", "青色", "Cyan");
+    public static string FloatingFontColorMagenta => T("品红", "洋紅", "Magenta");
+    public static string FloatingFontColorGray => T("灰色", "灰色", "Gray");
+    public static string FloatingOpacity => T("透明度", "透明度", "Opacity");
+    public static string FloatingOpacityValue => T("{0}%", "{0}%", "{0}%");
 
     // ─────────────────────────────────────────────────────────────────────────
     // Omen Key

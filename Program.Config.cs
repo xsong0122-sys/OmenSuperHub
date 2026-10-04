@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -727,6 +727,9 @@ namespace OmenSuperHub {
               key.SetValue("FloatingBarLoc", floatingBarLoc);
               key.SetValue("FloatingBar", floatingBar);
               key.SetValue("FloatingBarScreen", floatingBarScreen);
+              key.SetValue("FloatingOpacity", floatingOpacity);
+              key.SetValue("FloatingFontColor", floatingFontColor);
+              key.SetValue("FloatingLayout", floatingLayout);
               key.SetValue("DataLocalize", dataLocalize);
               key.SetValue("AppLanguage", appLanguage);
               key.SetValue("AutoFanProtect", autoFanProtect);
@@ -850,6 +853,15 @@ namespace OmenSuperHub {
                   break;
                 case "FloatingBarScreen":
                   key.SetValue("FloatingBarScreen", floatingBarScreen);
+                  break;
+                case "FloatingOpacity":
+                  key.SetValue("FloatingOpacity", floatingOpacity);
+                  break;
+                case "FloatingFontColor":
+                  key.SetValue("FloatingFontColor", floatingFontColor);
+                  break;
+                case "FloatingLayout":
+                  key.SetValue("FloatingLayout", floatingLayout);
                   break;
                 case "FloatingBar":
                   key.SetValue("FloatingBar", floatingBar);
@@ -1401,6 +1413,13 @@ namespace OmenSuperHub {
 
           floatingBarLoc = (string)key.GetValue("FloatingBarLoc", "left");
           UpdateCheckedState("floatingBarLocGroup", floatingBarLoc == "left" ? Strings.FloatingLocLeft : Strings.FloatingLocRight);
+
+          floatingOpacity = (int)key.GetValue("FloatingOpacity", 255);
+          floatingFontColor = (string)key.GetValue("FloatingFontColor", "auto");
+          floatingLayout = (string)key.GetValue("FloatingLayout", "horizontal");
+          UpdateCheckedState("floatingLayoutGroup", floatingLayout == "vertical" ? Strings.FloatingLayoutVertical : Strings.FloatingLayoutHorizontal);
+          UpdateCheckedState("floatingFontColorGroup", GetFloatingFontColorLabel(floatingFontColor));
+          UpdateCheckedState("floatingOpacityGroup", string.Format(Strings.FloatingOpacityValue, (int)Math.Round(floatingOpacity / 255.0 * 100)));
 
           floatingBarScreen = (string)key.GetValue("FloatingBarScreen", "");
           floatingBar = (string)key.GetValue("FloatingBar", "off");

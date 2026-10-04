@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -1214,7 +1214,7 @@ namespace OmenSuperHub {
 
         // 即时刷新浮窗
         if (floatingForm != null && floatingForm.Visible) {
-          floatingForm.SetText(monitorText(), textSize, floatingBarLoc, GetFloatingScreen());
+          floatingForm.SetText(monitorText(), textSize, floatingBarLoc, GetFloatingScreen(), floatingOpacity, floatingFontColor, floatingLayout);
         }
         SaveConfig("FloatingBarSize");
       };
@@ -1236,6 +1236,60 @@ namespace OmenSuperHub {
         UpdateFloatingText();
         SaveConfig("FloatingBarLoc");
       }, false));
+      floatingBarMenu.DropDownItems.Add(new ToolStripSeparator());
+
+      // ---- 布局（横/竖）----
+      ToolStripMenuItem floatingLayoutMenu = new ToolStripMenuItem(Strings.FloatingLayout);
+      floatingLayoutMenu.DropDownItems.Add(CreateMenuItem(Strings.FloatingLayoutHorizontal, "floatingLayoutGroup", (s, e) => {
+        floatingLayout = "horizontal";
+        UpdateFloatingText();
+        SaveConfig("FloatingLayout");
+      }, floatingLayout == "horizontal"));
+      floatingLayoutMenu.DropDownItems.Add(CreateMenuItem(Strings.FloatingLayoutVertical, "floatingLayoutGroup", (s, e) => {
+        floatingLayout = "vertical";
+        UpdateFloatingText();
+        SaveConfig("FloatingLayout");
+      }, floatingLayout == "vertical"));
+      floatingBarMenu.DropDownItems.Add(floatingLayoutMenu);
+
+      // ---- 字体颜色 ----
+      ToolStripMenuItem floatingColorMenu = new ToolStripMenuItem(Strings.FloatingFontColor);
+      var floatingColorOptions = new[] {
+        new KeyValuePair<string, string>(Strings.FloatingFontColorAuto, "auto"),
+        new KeyValuePair<string, string>(Strings.FloatingFontColorWhite, "white"),
+        new KeyValuePair<string, string>(Strings.FloatingFontColorRed, "red"),
+        new KeyValuePair<string, string>(Strings.FloatingFontColorGreen, "green"),
+        new KeyValuePair<string, string>(Strings.FloatingFontColorBlue, "blue"),
+        new KeyValuePair<string, string>(Strings.FloatingFontColorYellow, "yellow"),
+        new KeyValuePair<string, string>(Strings.FloatingFontColorOrange, "orange"),
+        new KeyValuePair<string, string>(Strings.FloatingFontColorPurple, "purple"),
+        new KeyValuePair<string, string>(Strings.FloatingFontColorCyan, "cyan"),
+        new KeyValuePair<string, string>(Strings.FloatingFontColorMagenta, "magenta"),
+        new KeyValuePair<string, string>(Strings.FloatingFontColorGray, "gray")
+      };
+      foreach (var colorOption in floatingColorOptions) {
+        string colorKey = colorOption.Value;
+        floatingColorMenu.DropDownItems.Add(CreateMenuItem(colorOption.Key, "floatingFontColorGroup", (s, e) => {
+          floatingFontColor = colorKey;
+          UpdateFloatingText();
+          SaveConfig("FloatingFontColor");
+        }, floatingFontColor == colorKey));
+      }
+      floatingBarMenu.DropDownItems.Add(floatingColorMenu);
+
+      // ---- 透明度 ----
+      ToolStripMenuItem floatingOpacityMenu = new ToolStripMenuItem(Strings.FloatingOpacity);
+      int[] floatingOpacityLevels = { 255, 230, 204, 178, 153, 128 };
+      foreach (int opacityLevel in floatingOpacityLevels) {
+        int level = opacityLevel;
+        string opacityLabel = string.Format(Strings.FloatingOpacityValue, (int)Math.Round(level / 255.0 * 100));
+        floatingOpacityMenu.DropDownItems.Add(CreateMenuItem(opacityLabel, "floatingOpacityGroup", (s, e) => {
+          floatingOpacity = level;
+          UpdateFloatingText();
+          SaveConfig("FloatingOpacity");
+        }, floatingOpacity == level));
+      }
+      floatingBarMenu.DropDownItems.Add(floatingOpacityMenu);
       floatingBarMenu.DropDownItems.Add(new ToolStripSeparator());
 
       // ---- 显示器选择 ----
@@ -2194,6 +2248,22 @@ namespace OmenSuperHub {
             MessageBoxButtons.OK,
             MessageBoxIcon.Error);
         return false;
+      }
+    }
+
+    static string GetFloatingFontColorLabel(string colorKey) {
+      switch (colorKey) {
+        case "white": return Strings.FloatingFontColorWhite;
+        case "red": return Strings.FloatingFontColorRed;
+        case "green": return Strings.FloatingFontColorGreen;
+        case "blue": return Strings.FloatingFontColorBlue;
+        case "yellow": return Strings.FloatingFontColorYellow;
+        case "orange": return Strings.FloatingFontColorOrange;
+        case "purple": return Strings.FloatingFontColorPurple;
+        case "cyan": return Strings.FloatingFontColorCyan;
+        case "magenta": return Strings.FloatingFontColorMagenta;
+        case "gray": return Strings.FloatingFontColorGray;
+        default: return Strings.FloatingFontColorAuto;
       }
     }
 
