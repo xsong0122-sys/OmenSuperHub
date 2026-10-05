@@ -544,7 +544,7 @@ namespace OmenSuperHub {
     static void RunHardwareMonitor() {
       bool isEnabled = false;
       //Console.Error.WriteLine("CRASH: " + $"1: {sw.ElapsedMilliseconds}ms");
-      var computer = new LibreComputer() { };
+      var computer = new LibreComputer(new HwMonitorSettings());
       //Console.Error.WriteLine("CRASH: " + $"2: {sw.ElapsedMilliseconds}ms");
       try {
         computer.Open();
