@@ -716,6 +716,7 @@ namespace OmenSuperHub {
               key.SetValue("MonitorFan", monitorFan);
               key.SetValue("MonitorRefreshRate", monitorRefreshRate);
               key.SetValue("TempDisplayMode", tempDisplayMode);
+              key.SetValue("CpuTempSource", cpuTempSource);
               if (IsBuiltInPreset(currentPreset)) {
                 key.SetValue("ShowCPUTemp", showCPUTemp);
                 key.SetValue("ShowCPUPower", showCPUPower);
@@ -826,6 +827,10 @@ namespace OmenSuperHub {
                   break;
                 case "TempDisplayMode":
                   key.SetValue("TempDisplayMode", tempDisplayMode);
+                  break;
+                case "CpuTempSource":
+                  // 全局（非预设）配置，避免切换预设时静默改变控温策略
+                  key.SetValue("CpuTempSource", cpuTempSource);
                   break;
                 case "ShowCPUTemp":
                   key.SetValue("ShowCPUTemp", showCPUTemp);
@@ -1392,6 +1397,11 @@ namespace OmenSuperHub {
           }
 
           alreadyRead = (int)key.GetValue("AlreadyRead", 0);
+
+          // CPU 控温依据（全局配置，不随预设切换）
+          cpuTempSource = (string)key.GetValue("CpuTempSource", "package");
+          if (cpuTempSource != "average") cpuTempSource = "package";
+          UpdateCheckedState("cpuTempSourceGroup", cpuTempSource == "average" ? Strings.CpuTempSourceAverage : Strings.CpuTempSourcePackage);
 
           customIcon = (string)key.GetValue("CustomIcon", "original");
           switch (customIcon) {

@@ -1049,6 +1049,7 @@ namespace OmenSuperHub {
         cpuTempReady = false; // 等待获取到温度后再参与风扇控制
         rawPowerCPU = 0f;     // 清除可能残留的脏功率值
         rawFrequencyCPU = 0f;
+        rawTempCPUAvg = -1f;  // 清除可能残留的核心平均温度
         CPUPower = 0f;
         CPUFrequency = 0f;
         if (wasAllOff) {
@@ -1073,6 +1074,7 @@ namespace OmenSuperHub {
         cpuTempReady = false;
         rawPowerCPU = 0f;  // 关闭时清零，避免重新开启时读到旧值
         rawFrequencyCPU = 0f;
+        rawTempCPUAvg = -1f;
         CPUPower = 0f;
         CPUFrequency = 0f;
         SetCpuMonitorState(false);
@@ -1183,6 +1185,18 @@ namespace OmenSuperHub {
         SaveConfig("TempDisplayMode");
       }, false));
       hardwareMonitorMenu.DropDownItems.Add(tempDisplayMenu);
+      ToolStripMenuItem cpuTempSourceMenu = new ToolStripMenuItem(Strings.CpuTempSource);
+      cpuTempSourceMenu.DropDownItems.Add(CreateMenuItem(Strings.CpuTempSourcePackage, "cpuTempSourceGroup", (s, e) => {
+        cpuTempSource = "package";
+        SaveConfig("CpuTempSource");
+        SetCpuTempSourceState(cpuTempSource);
+      }, cpuTempSource == "package"));
+      cpuTempSourceMenu.DropDownItems.Add(CreateMenuItem(Strings.CpuTempSourceAverage, "cpuTempSourceGroup", (s, e) => {
+        cpuTempSource = "average";
+        SaveConfig("CpuTempSource");
+        SetCpuTempSourceState(cpuTempSource);
+      }, cpuTempSource == "average"));
+      hardwareMonitorMenu.DropDownItems.Add(cpuTempSourceMenu);
       menu.Items.Add(hardwareMonitorMenu);
       ToolStripMenuItem floatingBarMenu = new ToolStripMenuItem(Strings.FloatingBar);
       floatingBarMenu.DropDownItems.Add(new ToolStripMenuItem(Strings.FloatingToggleTip) { Enabled = false });

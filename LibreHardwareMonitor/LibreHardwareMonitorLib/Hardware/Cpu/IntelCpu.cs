@@ -20,10 +20,12 @@ internal sealed class IntelCpu : GenericCpu
 
     private readonly Sensor _busClock;
     private readonly Sensor[] _coreClocks;
+    private readonly Sensor[] _coreTemperatures;
     private readonly MicroArchitecture _microArchitecture;
     private readonly Sensor _packageTemperature;
     private readonly Sensor[] _powerSensors;
     private readonly double _timeStampCounterMultiplier;
+    private readonly float[] _tjMax;
 
     private readonly IntelMsr _pawnModule;
 
@@ -325,6 +327,8 @@ internal sealed class IntelCpu : GenericCpu
                 break;
         }
 
+        _tjMax = tjMax;
+
         // check if processor supports a digital thermal sensor at package level
         if (cpuId[0][0].Data.GetLength(0) > 6 && (cpuId[0][0].Data[6, 0] & 0x40) != 0 && _microArchitecture != MicroArchitecture.Unknown)
         {
@@ -339,6 +343,12 @@ internal sealed class IntelCpu : GenericCpu
                                              settings);
 
             ActivateSensor(_packageTemperature);
+
+            // 每核心温度传感器：创建但不激活。仅当上层需要「核心平均」时（ReadCoreTemperatures 为真）
+            // 才在 Update 中按需读取各核心 MSR 并激活，避免不需要时的额外开销。
+            _coreTemperatures = new Sensor[_coreCount];
+            for (int i = 0; i < _coreTemperatures.Length; i++)
+                _coreTemperatures[i] = new Sensor(CoreString(i), i + 1, SensorType.Temperature, this, settings);
         }
 
         _busClock = new Sensor("Bus Speed", 0, SensorType.Clock, this, settings);
@@ -480,6 +490,35 @@ internal sealed class IntelCpu : GenericCpu
             else
             {
                 _packageTemperature.Value = null;
+            }
+        }
+
+        if (_coreTemperatures != null)
+        {
+            // 只有上层显式要求时才逐核心读取 MSR（按需），否则仅清空值、不产生额外开销。
+            if (_settings.GetValue("ReadCoreTemperatures", "false") == "true")
+            {
+                for (int i = 0; i < _coreTemperatures.Length; i++)
+                {
+                    // if reading is valid
+                    if (_pawnModule.ReadMsr(IA32_THERM_STATUS_MSR, out eax, out _, _cpuId[i][0].Affinity) && (eax & 0x80000000) != 0)
+                    {
+                        // get the dist from tjMax from bits 22:16
+                        float deltaT = (eax & 0x007F0000) >> 16;
+                        _coreTemperatures[i].Value = _tjMax[i] - deltaT;
+                    }
+                    else
+                    {
+                        _coreTemperatures[i].Value = null;
+                    }
+
+                    ActivateSensor(_coreTemperatures[i]);
+                }
+            }
+            else
+            {
+                for (int i = 0; i < _coreTemperatures.Length; i++)
+                    _coreTemperatures[i].Value = null;
             }
         }
 

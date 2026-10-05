@@ -29,6 +29,7 @@ using LibreComputer = LibreHardwareMonitor.Hardware.Computer;
 using LibreHardwareType = LibreHardwareMonitor.Hardware.HardwareType;
 using LibreIHardware = LibreHardwareMonitor.Hardware.IHardware;
 using LibreISensor = LibreHardwareMonitor.Hardware.ISensor;
+using LibreISettings = LibreHardwareMonitor.Hardware.ISettings;
 using LibreSensorType = LibreHardwareMonitor.Hardware.SensorType;
 
 namespace OmenSuperHub {
@@ -118,6 +119,8 @@ namespace OmenSuperHub {
     static int? maxCPUTemp = null;
     static int? maxGPUTemp = null;
     static float CPUTemp = 50, GPUTemp = 40, rawTempCPU = 50f, rawTempGPU = 40f;
+    static float rawTempCPUAvg = -1f; // CPU 核心平均温度，-1 表示不可用（如 AMD 无 per-core 传感器）
+    static bool cpuAvgFallbackLogged = false; // 核心平均温度回退日志去重
     static float CPUPower = 0, GPUPower = 0, CPUFrequency = 0f, GPUFrequency = 0f, rawPowerCPU = 0f, rawPowerGPU = 0f, rawFrequencyCPU = 0f, rawFrequencyGPU = 0f;
     static bool rawGotGPU = false;
     static volatile bool tempReady = false;   // 子进程首次输出有效温度后置 true
@@ -130,6 +133,8 @@ namespace OmenSuperHub {
     // Cache last written values to avoid unnecessary disk reads/writes
     static string lastCpuText = null, lastGpuText = null, lastFanText = null, pawnIOState = "";
     static string tempDisplayMode = "smoothed"; // 温度显示方式：smoothed=平滑值, raw=原始值
+    static string cpuTempSource = "package"; // CPU 控温依据：package=封装温度, average=核心平均温度
+    static volatile bool readCoreTemps = false; // 子进程侧开关：是否逐核心读取 CPU 温度（仅「核心平均」时需要）
     static int? platformMaxFanSpeed = null; // 平台最大转速（RPM），由LoadDefaultFanConfig获取后缓存
     static SortedDictionary<float, int> CPUTempFanMap = new SortedDictionary<float, int>();
     static SortedDictionary<float, int> GPUTempFanMap = new SortedDictionary<float, int>();
@@ -522,6 +527,17 @@ namespace OmenSuperHub {
       isConnectedToNVIDIA = true;
     }
 
+    // 仅子进程使用：把「是否逐核心读取 CPU 温度」开关通过 ISettings 传给 LHM。
+    // 其余键一律返回默认值，保持与 LHM 默认 Settings 完全一致的行为。
+    sealed class HwMonitorSettings : LibreISettings {
+      public bool Contains(string name) { return false; }
+      public void SetValue(string name, string value) { }
+      public string GetValue(string name, string value) {
+        return name == "ReadCoreTemperatures" ? (readCoreTemps ? "true" : "false") : value;
+      }
+      public void Remove(string name) { }
+    }
+
     [HandleProcessCorruptedStateExceptions]
     static void RunHardwareMonitor() {
       bool isEnabled = false;
@@ -557,6 +573,12 @@ namespace OmenSuperHub {
           if (line == "CPU:OFF") {
             computer.IsCpuEnabled = false;
           }
+          if (line == "AVG:ON") {
+            readCoreTemps = true;
+          }
+          if (line == "AVG:OFF") {
+            readCoreTemps = false;
+          }
           if (line.StartsWith("INTERVAL:") && int.TryParse(line.Substring(9), out int ms) && ms > 0)
             sleepMs = ms;
         }
@@ -579,6 +601,8 @@ namespace OmenSuperHub {
         bool gGpu = false;
         bool exactCpuClockFound = false;
         float fCpu = 0, fGpu = 0;
+        float cpuCoreTempSum = 0;
+        int cpuCoreTempCount = 0;
         try {
           foreach (LibreIHardware hw in computer.Hardware) {
             if (hw.HardwareType != LibreHardwareType.Cpu && hw.HardwareType != LibreHardwareType.GpuNvidia && hw.HardwareType != LibreHardwareType.GpuAmd) continue;
@@ -597,6 +621,13 @@ namespace OmenSuperHub {
                 if (hw.HardwareType == LibreHardwareType.Cpu) {
                   if (sensor.SensorType == LibreSensorType.Temperature && (sensor.Name.Contains("Package") || sensor.Name.Contains("Tctl/Tdie")))
                     tCpu = sensor.Value.GetValueOrDefault();
+                  // 累加每核心温度（Intel 多核命名为 "CPU Core #n"，单核为 "CPU Core"）；
+                  // 用名称精确匹配排除 AMD 的聚合项 "CPU Cores" 与 "Core (Tctl/Tdie)"
+                  if (sensor.SensorType == LibreSensorType.Temperature && sensor.Value.HasValue &&
+                      (sensor.Name.StartsWith("CPU Core #") || sensor.Name == "CPU Core")) {
+                    cpuCoreTempSum += sensor.Value.GetValueOrDefault();
+                    cpuCoreTempCount++;
+                  }
                   if (sensor.SensorType == LibreSensorType.Power && sensor.Name.Contains("Package"))
                     pCpu = sensor.Value.GetValueOrDefault();
                   if (sensor.SensorType == LibreSensorType.Clock && sensor.Value.HasValue) {
@@ -625,7 +656,8 @@ namespace OmenSuperHub {
               } catch { }
             }
           }
-          Console.WriteLine(string.Format(CultureInfo.InvariantCulture, "{0:F2};{1:F2};{2:F2};{3:F2};{4};{5:F2};{6:F2}", tCpu, pCpu, tGpu, pGpu, gGpu ? 1 : 0, fCpu, fGpu));
+          float tCpuAvg = cpuCoreTempCount > 0 ? cpuCoreTempSum / cpuCoreTempCount : -1f;
+          Console.WriteLine(string.Format(CultureInfo.InvariantCulture, "{0:F2};{1:F2};{2:F2};{3:F2};{4};{5:F2};{6:F2};{7:F2}", tCpu, pCpu, tGpu, pGpu, gGpu ? 1 : 0, fCpu, fGpu, tCpuAvg));
         } catch (Exception ex) {
           Console.Error.WriteLine("CRASH: " + ex.Message);
           Environment.Exit(1);
@@ -655,7 +687,7 @@ namespace OmenSuperHub {
         //Debug.WriteLine("[HWMonitor OUT] " + e.Data); // 将子进程输出重定向到VS的输出窗口
         if (e.Data.StartsWith("CRASH:")) return;
         var parts = e.Data.Split(';');
-        if (parts.Length == 5 || parts.Length == 7) {
+        if (parts.Length == 5 || parts.Length == 7 || parts.Length == 8) {
           if (float.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out float tc)) rawTempCPU = tc;
           if (float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out float pc) && pc < 9999) rawPowerCPU = pc;
           if (float.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out float tg)) rawTempGPU = tg;
@@ -663,13 +695,20 @@ namespace OmenSuperHub {
           rawGotGPU = parts[4] == "1";
           rawFrequencyCPU = 0f;
           rawFrequencyGPU = 0f;
-          if (parts.Length == 7) {
+          if (parts.Length >= 7) {
             if (float.TryParse(parts[5], NumberStyles.Float, CultureInfo.InvariantCulture, out float fc)) rawFrequencyCPU = fc;
             if (float.TryParse(parts[6], NumberStyles.Float, CultureInfo.InvariantCulture, out float fg)) rawFrequencyGPU = fg;
           }
-          // 首次收到数据时，初始化对应传感器的平滑温度
+          // 第 8 段为核心平均温度，<0 或解析失败表示不可用
+          if (parts.Length == 8) {
+            if (float.TryParse(parts[7], NumberStyles.Float, CultureInfo.InvariantCulture, out float ta) && ta >= 0f)
+              rawTempCPUAvg = ta;
+            else
+              rawTempCPUAvg = -1f;
+          }
+          // 首次收到数据时，初始化对应传感器的平滑温度（使用当前选定的控温依据）
           if (!cpuTempReady) {
-            smoothedCPUTemp = rawTempCPU;
+            smoothedCPUTemp = GetEffectiveRawCpuTemp();
             cpuTempReady = true;
           }
           if (!gpuTempReady && rawGotGPU) {
@@ -726,6 +765,7 @@ namespace OmenSuperHub {
         SetGpuMonitorState(monitorGPU);
         SetCpuMonitorState(monitorCPU);
         SetMonitorInterval(monitorRefreshRate == "high" ? 250 : 1000);
+        SetCpuTempSourceState(cpuTempSource);
       } catch (Exception) { }
     }
 
@@ -744,6 +784,13 @@ namespace OmenSuperHub {
     static void SetMonitorInterval(int ms) {
       if (hwMonitorIn != null && hwMonitorProcess != null && !hwMonitorProcess.HasExited) {
         try { hwMonitorIn.WriteLine($"INTERVAL:{ms}"); } catch { }
+      }
+    }
+
+    // 告诉子进程是否需要逐核心读取 CPU 温度（仅「核心平均」依据下才需要）
+    static void SetCpuTempSourceState(string source) {
+      if (hwMonitorIn != null && hwMonitorProcess != null && !hwMonitorProcess.HasExited) {
+        try { hwMonitorIn.WriteLine(source == "average" ? "AVG:ON" : "AVG:OFF"); } catch { }
       }
     }
 
@@ -1155,12 +1202,30 @@ namespace OmenSuperHub {
     static float smoothedCPUTemp = 50f;
     static float smoothedGPUTemp = 40f;
 
+    /// <summary>
+    /// 按当前控温依据返回生效的 CPU 原始温度。
+    /// 选择“核心平均”但该平台拿不到 per-core 传感器（如 AMD Zen）时静默回退到封装温度。
+    /// </summary>
+    static float GetEffectiveRawCpuTemp() {
+      return (cpuTempSource == "average" && rawTempCPUAvg >= 0f) ? rawTempCPUAvg : rawTempCPU;
+    }
+
     static void QueryHardware() {
       // 防止定时器重入：上次查询未完成时直接跳过本次
       if (Interlocked.CompareExchange(ref _isQuerying, 1, 0) != 0)
         return;
 
-      float tempCPU = rawTempCPU;
+      // 选择“核心平均”但平均值不可用时，仅在状态翻转时记一条日志，避免刷屏
+      if (cpuTempSource == "average" && monitorCPU && rawTempCPUAvg < 0f) {
+        if (!cpuAvgFallbackLogged) {
+          cpuAvgFallbackLogged = true;
+          Logger.Error("CPU 核心平均温度不可用（该平台无 per-core 传感器），已回退到封装温度。");
+        }
+      } else {
+        cpuAvgFallbackLogged = false;
+      }
+
+      float tempCPU = GetEffectiveRawCpuTemp();
       bool getGPU = false;
 
       if (monitorCPU && cpuTempReady) {

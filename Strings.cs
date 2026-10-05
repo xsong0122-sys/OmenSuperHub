@@ -630,6 +630,13 @@ namespace OmenSuperHub {
     public static string MonitorPrepareLabel => T("数据获取中...", "數據獲取中...", "Retrieving data...");
 
     // ─────────────────────────────────────────────────────────────────────────
+    // 硬件监控 — CPU 控温依据
+    // ─────────────────────────────────────────────────────────────────────────
+    public static string CpuTempSource => T("控温依据", "控溫依據", "Temp Control Source");
+    public static string CpuTempSourcePackage => T("封装温度", "封裝溫度", "Package Temp");
+    public static string CpuTempSourceAverage => T("核心平均温度", "核心平均溫度", "Core Average");
+
+    // ─────────────────────────────────────────────────────────────────────────
     // 硬件监控 — 自动转速模式下无法关闭监控的警告
     // ─────────────────────────────────────────────────────────────────────────
     public static string MonitorAutoFanWarning => T("当前为自动转速模式，若要关闭监控需切换为其他转速控制模式。",
