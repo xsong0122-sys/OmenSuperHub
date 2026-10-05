@@ -109,6 +109,8 @@ namespace OmenSuperHub {
     static volatile bool monitorFan = false;
     static bool skipCheckedUpdate = false; // action 内拦截时置 true，阻止 CreateMenuItem 覆盖勾选
     static bool showCPUTemp = true, showCPUPower = true, showCPUFrequency = false, showGPUTemp = true, showGPUPower = true, showGPUFrequency = false;
+    static bool monitorFPS = false, showFPS = true; // FPS 监控（全局配置，不随预设切换）
+    static string fpsMode = "auto";                 // FPS 采集模式：auto / dxgi / presentmon
     static bool powerOnline = SystemInformation.PowerStatus.PowerLineStatus == PowerLineStatus.Online;
     static bool monitorCPU = true, monitorGPU = true, isConnectedToNVIDIA = true, prevIsConnectedToNVIDIA = true, omenKeyTriggered = false; // isTwoBytePL4 = false;
     static bool hasNVIDIAGpu; // 启动时一次性检测，硬件状态不会改变
@@ -1479,6 +1481,13 @@ namespace OmenSuperHub {
         else
           str += $"Fan:  {fanSpeedNow[0] * 100}, {fanSpeedNow[1] * 100}";
       }
+      if (monitorFPS && showFPS) {
+        string fpsText = FpsMonitor.FormatDisplayText();
+        if (fpsText != null) {
+          if (str.Length > 0) str += "\n";
+          str += $"FPS: {fpsText}";
+        }
+      }
       if (str.Length == 0) str = Strings.MonitorClosed;
       return str;
     }
@@ -1549,6 +1558,11 @@ namespace OmenSuperHub {
         lines.Add($"Fan {string.Join(" ", fanParts)}");
       }
 
+      if (monitorFPS && showFPS) {
+        string fpsText = FpsMonitor.FormatDisplayText();
+        if (fpsText != null) lines.Add($"FPS {fpsText}");
+      }
+
       if (lines.Count == 0) lines.Add(Strings.MonitorClosed);
       return lines;
     }
@@ -1609,6 +1623,7 @@ namespace OmenSuperHub {
         OmenKeyOff();
       }
       UninstallTrayScrollHook(); // 卸载鼠标钩子
+      try { FpsMonitor.Stop(); } catch { } // 停止 FPS 采集
       tooltipUpdateTimer.Stop(); // 停止定时器
 
       //openComputer.Close();

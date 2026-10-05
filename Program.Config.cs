@@ -1451,6 +1451,19 @@ namespace OmenSuperHub {
           autoFanProtect = (string)key.GetValue("AutoFanProtect", "on");
           UpdateCheckedState("autoFanProtectGroup", autoFanProtect == "on" ? Strings.FanAutoProtectOn : Strings.FanAutoProtectOff);
 
+          // FPS 监控（全局配置，不随预设切换）
+          monitorFPS = Convert.ToBoolean(key.GetValue("MonitorFPS", false));
+          showFPS = Convert.ToBoolean(key.GetValue("ShowFPS", true));
+          fpsMode = (string)key.GetValue("FpsMode", "auto");
+          if (fpsMode != "dxgi" && fpsMode != "presentmon") fpsMode = "auto";
+          UpdateCheckedState("monitorFPSGroup", monitorFPS ? Strings.MonitorFpsOn : Strings.MonitorFpsOff);
+          UpdateCheckedState("fpsModeGroup", FpsMonitor.ModeLabel(FpsMonitor.ParseMode(fpsMode)));
+          SetMenuItemChecked("showFPSGroup", Strings.MonitorFpsShow, showFPS);
+          if (monitorFPS) {
+            FpsMonitor.SetMode(FpsMonitor.ParseMode(fpsMode));
+            FpsMonitor.Start();
+          }
+
           UpdateMonitorMetricCheckedStates();
 
           appLanguage = (string)key.GetValue("AppLanguage", "zh-CN");

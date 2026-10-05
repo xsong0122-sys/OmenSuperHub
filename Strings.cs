@@ -630,6 +630,21 @@ namespace OmenSuperHub {
     public static string MonitorPrepareLabel => T("数据获取中...", "數據獲取中...", "Retrieving data...");
 
     // ─────────────────────────────────────────────────────────────────────────
+    // 硬件监控 — FPS
+    // ─────────────────────────────────────────────────────────────────────────
+    public static string MonitorFpsLabel => T("FPS监控", "FPS監控", "FPS Monitor");
+    public static string MonitorFpsOn => T("开启FPS监控", "開啟FPS監控", "Enable FPS Monitor");
+    public static string MonitorFpsOff => T("关闭FPS监控", "關閉FPS監控", "Disable FPS Monitor");
+    public static string MonitorFpsShow => T("显示FPS", "顯示FPS", "Show FPS");
+    public static string FpsMode => T("采集模式", "擷取模式", "Capture Mode");
+    public static string FpsModeAuto => T("自动", "自動", "Auto");
+    public static string FpsModeDxgi => T("DXGI（兼容模式）", "DXGI（相容模式）", "DXGI (Compatibility)");
+    public static string FpsModePresentMon => T("PresentMon（精确）", "PresentMon（精確）", "PresentMon (Accurate)");
+    public static string FpsModePresentMonMissing => T("未找到 PresentMon.exe，请将其放在程序目录后重启程序",
+        "未找到 PresentMon.exe，請將其放在程式目錄後重啟程式",
+        "PresentMon.exe not found. Place it in the program folder and restart.");
+
+    // ─────────────────────────────────────────────────────────────────────────
     // 硬件监控 — CPU 控温依据
     // ─────────────────────────────────────────────────────────────────────────
     public static string CpuTempSource => T("控温依据", "控溫依據", "Temp Control Source");

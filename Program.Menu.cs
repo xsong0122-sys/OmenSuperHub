@@ -1161,6 +1161,45 @@ namespace OmenSuperHub {
         SaveConfig("MonitorFan");
       }, true));
       hardwareMonitorMenu.DropDownItems.Add(monitorFanMenu);
+      ToolStripMenuItem monitorFpsMenu = new ToolStripMenuItem(Strings.MonitorFpsLabel);
+      monitorFpsMenu.DropDownItems.Add(CreateMenuItem(Strings.MonitorFpsOn, "monitorFPSGroup", (s, e) => {
+        monitorFPS = true;
+        FpsMonitor.SetMode(FpsMonitor.ParseMode(fpsMode));
+        FpsMonitor.Start();
+        SaveConfig("MonitorFPS");
+        RefreshMonitorDisplay();
+      }, false));
+      monitorFpsMenu.DropDownItems.Add(CreateMenuItem(Strings.MonitorFpsOff, "monitorFPSGroup", (s, e) => {
+        monitorFPS = false;
+        FpsMonitor.Stop();
+        SaveConfig("MonitorFPS");
+        RefreshMonitorDisplay();
+      }, true));
+      monitorFpsMenu.DropDownItems.Add(new ToolStripSeparator());
+      ToolStripMenuItem fpsModeMenu = new ToolStripMenuItem(Strings.FpsMode);
+      fpsModeMenu.DropDownItems.Add(CreateMenuItem(Strings.FpsModeAuto, "fpsModeGroup", (s, e) => {
+        fpsMode = "auto";
+        FpsMonitor.SetMode(FpsMode.Auto);
+        SaveConfig("FpsMode");
+      }, fpsMode == "auto"));
+      fpsModeMenu.DropDownItems.Add(CreateMenuItem(Strings.FpsModeDxgi, "fpsModeGroup", (s, e) => {
+        fpsMode = "dxgi";
+        FpsMonitor.SetMode(FpsMode.Dxgi);
+        SaveConfig("FpsMode");
+      }, fpsMode == "dxgi"));
+      ToolStripMenuItem fpsModePresentMon = CreateMenuItem(Strings.FpsModePresentMon, "fpsModeGroup", (s, e) => {
+        fpsMode = "presentmon";
+        FpsMonitor.SetMode(FpsMode.PresentMon);
+        SaveConfig("FpsMode");
+      }, fpsMode == "presentmon");
+      if (!PresentMonFpsSource.BinaryPresent) {
+        fpsModePresentMon.Enabled = false;
+        fpsModePresentMon.ToolTipText = Strings.FpsModePresentMonMissing;
+      }
+      fpsModeMenu.DropDownItems.Add(fpsModePresentMon);
+      monitorFpsMenu.DropDownItems.Add(fpsModeMenu);
+      monitorFpsMenu.DropDownItems.Add(CreateMonitorMetricItem(Strings.MonitorFpsShow, "showFPSGroup", () => showFPS, value => showFPS = value, "ShowFPS"));
+      hardwareMonitorMenu.DropDownItems.Add(monitorFpsMenu);
       ToolStripMenuItem monitorRefreshMenu = new ToolStripMenuItem(Strings.MonitorRefresh);
       monitorRefreshMenu.DropDownItems.Add(CreateMenuItem(Strings.MonitorRefreshHigh, "monitorRefreshGroup", (s, e) => {
         monitorRefreshRate = "high";
