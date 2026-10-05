@@ -13,8 +13,11 @@ namespace OmenSuperHub {
   /// 基于 ETW，覆盖 D3D / OpenGL / Vulkan 及窗口化场景，准确性优于方案A。
   /// </summary>
   public sealed class PresentMonFpsSource : IFpsSource {
-    // PresentMon v2.x 标准输出 CSV 参数；如使用其它版本可按需调整此行
-    const string Arguments = "--output_stdout --no_console_stats";
+    // PresentMon v2.x 标准输出 CSV 参数。
+    // 使用独立会话名，并用 --stop_existing_session 清理上次被强杀后残留的 ETW 会话；
+    // 否则 PresentMon 会因“会话已存在”直接退出、stdout 全空，导致 FPS 恒为 --。
+    const string SessionName = "OmenSuperHubFps";
+    const string Arguments = "--output_stdout --no_console_stats --session_name " + SessionName + " --stop_existing_session";
     const int SampleWindow = 16;        // 每个进程保留的最近帧间隔数
     const int MaxTrackedProcesses = 64; // 跟踪的进程上限，超出则清空重建
 
@@ -93,7 +96,7 @@ namespace OmenSuperHub {
             Arguments = Arguments,
             UseShellExecute = false,
             RedirectStandardOutput = true,
-            RedirectStandardError = false,
+            RedirectStandardError = true,
             CreateNoWindow = true
           }
         };
@@ -132,6 +135,16 @@ namespace OmenSuperHub {
       try {
         p.Start();
 
+        // 捕获 stderr：PresentMon 出错时会在此输出 error 行（如 ETW 会话冲突、权限不足），
+        // 否则这些信息会被丢弃，导致只能看到“无输出”而无法定位原因。
+        Thread errReader = new Thread(() => {
+          try {
+            string err;
+            while ((err = p.StandardError.ReadLine()) != null) Logger.Error($"PresentMonFpsSource: {err}");
+          } catch { }
+        }) { IsBackground = true, Name = "PresentMonErr" };
+        errReader.Start();
+
         int pidIndex = -1;
         int msIndex = -1;
         string header = p.StandardOutput.ReadLine();
@@ -146,7 +159,7 @@ namespace OmenSuperHub {
         }
 
         if (pidIndex < 0 || msIndex < 0) {
-          Logger.Error($"PresentMonFpsSource: 输出缺少预期列 ({header})");
+          Logger.Error($"PresentMonFpsSource: 输出缺少预期列 ({(string.IsNullOrEmpty(header) ? "无输出" : header)})");
           return;
         }
 
