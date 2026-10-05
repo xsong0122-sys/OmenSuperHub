@@ -31,7 +31,9 @@ $ProgressPreference = 'SilentlyContinue'   # 关闭进度条，显著加快 Invo
 try { & chcp.com 65001 *> $null } catch { }
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }
 
-function Say([string]$Message, [string]$Color) { Write-Host $Message -ForegroundColor $Color }
+function Say([string]$Message, [string]$Color) {
+  if ([string]::IsNullOrEmpty($Color)) { Write-Host $Message } else { Write-Host $Message -ForegroundColor $Color }
+}
 function Step([string]$Message) { Say "[*] $Message" 'Cyan' }
 function Ok([string]$Message) { Say "[+] $Message" 'Green' }
 function Warn([string]$Message) { Say "[!] $Message" 'Yellow' }
@@ -140,34 +142,32 @@ if ($pawnInstalled) {
 
 # ---------- 5. PresentMon.exe（可选） ----------
 Step "检查 PresentMon.exe ..."
-$presentMon = Join-Path $Root 'PresentMon.exe'
-if ((Test-Path $presentMon) -and -not $Force) {
+$pmPath = Join-Path $Root 'PresentMon.exe'
+if ((Test-Path $pmPath) -and -not $Force) {
   Ok "PresentMon.exe 已存在，跳过"
 } else {
   if (Confirm-Install 'PresentMon.exe（FPS 精确模式）' $PresentMon) {
     Warn "正在从 GitHub 获取免安装 x64 版本 ..."
-    $temp = "$presentMon.tmp"
+    $temp = "$pmPath.tmp"
     try {
       [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-      $api = 'https://api.github.com/repos/GameTechDev/PresentMon/releases?per_page=20'
-      $headers = @{ 'User-Agent' = 'OmenSuperHub-Setup'; 'Accept' = 'application/vnd.github+json' }
 
-      $response = Invoke-WebRequest -Uri $api -Headers $headers -TimeoutSec 30 -UseBasicParsing
-      $releases = $response.Content | ConvertFrom-Json
-
-      $asset = $null
-      foreach ($r in @($releases)) {
-        foreach ($a in @($r.assets)) {
-          if ($a.name -match '^PresentMon-.*x64\.exe$') { $asset = $a; break }
-        }
-        if ($asset) { break }
+      # 不走 api.github.com：未认证请求限流 60 次/小时，极易返回 403（已禁止）。
+      # 改为跟随 releases/latest 跳转拿到版本号，再拼免安装单文件的下载地址。
+      $latest = Invoke-WebRequest -Uri 'https://github.com/GameTechDev/PresentMon/releases/latest' -TimeoutSec 30 -UseBasicParsing
+      $finalUri = $latest.BaseResponse.ResponseUri.AbsoluteUri
+      if ($finalUri -match '/tag/([^/?#]+)') {
+        $tag = $Matches[1]
+      } else {
+        throw "无法解析最新版本号（$finalUri）"
       }
-      if (-not $asset) { throw '未在 Releases 中找到免安装的 x64 单文件' }
+      $fileName = 'PresentMon-' + $tag.TrimStart('v') + '-x64.exe'
+      $downloadUrl = "https://github.com/GameTechDev/PresentMon/releases/download/$tag/$fileName"
 
-      Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $temp -Headers $headers -TimeoutSec 300 -UseBasicParsing
+      Invoke-WebRequest -Uri $downloadUrl -OutFile $temp -TimeoutSec 300 -UseBasicParsing
       if (-not (Test-Path $temp) -or (Get-Item $temp).Length -le 0) { throw '下载文件为空' }
-      Move-Item -Path $temp -Destination $presentMon -Force
-      Ok "PresentMon 下载完成：$($asset.name)"
+      Move-Item -Path $temp -Destination $pmPath -Force
+      Ok "PresentMon 下载完成：$fileName"
     } catch {
       Fail "PresentMon 下载失败：$($_.Exception.Message)"
       $failed += 'PresentMon.exe'
